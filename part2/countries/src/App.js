@@ -30,7 +30,7 @@ const App = () => {
     text = display.map(d => 
       <p key={d.alpha3Code}>
         {d.name}
-        
+        <button onClick={() => handleClick(d.name)}>show</button>
       </p>)
   } else {
     text = display.map(d => 
