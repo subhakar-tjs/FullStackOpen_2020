@@ -1,17 +1,22 @@
-import React from 'react'
-import Person from './Person'
+import React from 'react';
 
-function Persons({persons,foundPerson, searchedPerson,deletePerson}) {
-    const rows = () =>
-        searchedPerson === ""
-        ? (persons.map(p => <Person key={p.id} id={p.id} name={p.name} number={p.number} deletePerson={deletePerson}/>)
-        ) : ( foundPerson.map(p => (<p key={p.id}>{p.name} {p.number}</p>))
-        )
-    return (
-        <div>
-            {rows()}
-        </div>
-    )
+const Persons = ({ persons, onDelete }) => {
+  function confirmDelete(id, name) {
+    if(window.confirm(`Delete ${name}?`)) {
+      onDelete(id);
+    }
+    return;
+  }
+
+  return(
+    <>
+      {persons.map(pers => (
+        <p key={pers.id}>
+          {pers.name} {pers.number}
+          <button onClick={() => confirmDelete(pers.id, pers.name)}>delete</button>
+        </p>
+      ))}
+    </>
+  );
 }
-
-export default Persons
+export default Persons;
