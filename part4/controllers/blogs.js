@@ -1,95 +1,95 @@
-const blogsRouter = require('express').Router()
+const bloglistRouter = require('express').Router()
 const Blog = require('../models/blog')
 const User = require('../models/user')
-const jwt = require('jsonwebtoken')
 
-blogsRouter.get('/', async (request, response) => {
-    
-    const blogs =  await Blog.find({}).populate('user', { username: 1, name: 1 })
-    response.json(blogs.map(blog => blog.toJSON()))
-
+// Routes
+bloglistRouter.get('/', async (request, response) => {
+  const blogs = await Blog.find({}).populate('user', { username: 1, name: 1 })
+  response.json(blogs.map((blog) => blog.toJSON()))
 })
 
-
-blogsRouter.post('/', async (request, response) => {
-    const body = request.body
-
-    if (!body.url || !body.title) {
-        return response.status(400).json({
-            error: 'missing author or url'
-        })
-    }
-
-    try {
-        const decodedToken = jwt.verify(request.token, process.env.SECRET)
-        if (!request.token || !decodedToken.id) {
-            return response.status(401).json({ error: 'token missing or invalid' })
-        }
-        const user = await User.findById(decodedToken.id)
-
-        console.log(user)
-
-        if (body.title === undefined || body.url === undefined){
-            return response.status(400).json({error: 'title or url missing'})
-        }
-
-        const blog = new Blog({
-            title: body.title,
-            author: body.author,
-            url: body.url,
-            likes: body.likes || 0,
-            user: user._id
-        })
-  
-
-        const savedBlog = await blog.save()
-        user.blogs = user.blogs.concat(savedBlog._id)
-        await user.save()
-        response.json(savedBlog.toJSON())
-    } catch (expection) {
-        response.status(401).json({error: "something went wrong"})
-    }
+bloglistRouter.get('/:id', async (request, response) => {
+  try {
+    const resultBlog = await Blog.findById(request.params.id).populate('user', {
+      username: 1,
+      name: 1,
+    })
+    response.json(resultBlog.toJSON())
+  } catch (error) {
+    response.status(404).end()
+  }
 })
 
+bloglistRouter.post('/', async (request, response) => {
+  if (!request.token || !request.decodedToken) {
+    return response.status(401).json({ error: 'missing or invalid token' })
+  }
 
-blogsRouter.delete('/:id', async (req, res) => {
+  try {
+    const { title, author, url, likes } = request.body
 
-    const blog = await Blog.findById(req.params.id)
-    console.log(blog)
+    const user = await User.findById(request.decodedToken.id)
 
+    const newBlog = new Blog({
+      title,
+      author,
+      url,
+      likes: likes || 0,
+      user: user.id,
+    })
+    const savedBlog = await newBlog.save()
 
-    try {
-        const decodedToken = jwt.verify(req.token, process.env.SECRET)
-        if (!req.token || !decodedToken.id) {
-            return res.status(401).json({ error: 'token missing or invalid' })
-        }
-        const user = await User.findById(decodedToken.id)
+    user.blogs = user.blogs.concat(savedBlog.id)
+    await user.save()
 
+    // Populate user field on the returned blog
+    const populatedBlog = await savedBlog
+      .populate('user', { username: 1, name: 1 })
+      .execPopulate()
 
-        console.log(user)
-
-        if (blog.user.toString() === user.id.toString()) { 
-            const blog = await Blog.findByIdAndRemove(req.params.id)
-            return res.status(204).json(blog.toJSON())
-        } else {
-            return res.status(401).json({error: "token does not match"})    
-        }
-    } catch (expection) {
-        return res.status(401).json({error: "something went wrong"})
-    }
+    response.status(201).json(populatedBlog.toJSON())
+  } catch (error) {
+    response.status(400).end()
+  }
 })
 
-blogsRouter.put('/:id', async (req, res) => {
-    const body = req.body
+bloglistRouter.delete('/:id', async (request, response) => {
+  if (!request.token || !request.decodedToken) {
+    return response.status(401).json({ error: 'missing or invalid token' })
+  }
 
-    const newPerson = {
-        title: body.title,
-        author: body.author,
-        url: body.url,
-        likes: body.likes
-    }
-    const saved = await Blog.findByIdAndUpdate(req.params.id, newPerson)
-    res.status(200).json(saved.toJSON)
+  const blog = await Blog.findById(request.params.id)
+  const userId = request.decodedToken.id
+
+  if (blog.user.toString() !== userId.toString()) {
+    response.status(400).end()
+  }
+
+  await Blog.findByIdAndRemove(request.params.id)
+  response.status(204).end()
 })
 
-module.exports = blogsRouter
+bloglistRouter.put('/:id', async (request, response) => {
+  if (!request.token || !request.decodedToken) {
+    return response.status(401).json({ error: 'missing or invalid token' })
+  }
+
+  const blogObject = {
+    likes: request.body.likes,
+  }
+
+  const updatedBlog = await Blog.findByIdAndUpdate(
+    request.params.id,
+    blogObject,
+    { new: true }
+  )
+
+  // Populate user field on the returned blog
+  const populatedBlog = await updatedBlog
+    .populate('user', { username: 1, name: 1 })
+    .execPopulate()
+
+  response.json(populatedBlog.toJSON())
+})
+
+module.exports = bloglistRouter

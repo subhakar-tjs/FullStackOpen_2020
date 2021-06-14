@@ -1,9 +1,0 @@
-PUT http://localhost:3001/api/blogs/5a422a851b54a676234d17f7
-Content-Type: application/json
-
-{
-    "title": "React patterns",
-    "author": "jviitamo",
-    "url": "jv.kuvat.fi",
-    "likes": 1234
-}

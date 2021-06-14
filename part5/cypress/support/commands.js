@@ -26,21 +26,28 @@
 
 Cypress.Commands.add('login', ({ username, password }) => {
   cy.request('POST', 'http://localhost:3001/api/login', {
-    username, password
-  }).then(({ body }) => {
-    localStorage.setItem('loggedNoteappUser', JSON.stringify(body))
+    username,
+    password,
+  }).then((response) => {
+    localStorage.setItem('loggedInUser', JSON.stringify(response.body))
     cy.visit('http://localhost:3000')
   })
 })
 
-Cypress.Commands.add('createBlog', ({ title, author, url }) => {
+Cypress.Commands.add('createBlog', ({ title, author, url, likes }) => {
+  const content = likes ? { title, author, url, likes } : { title, author, url }
   cy.request({
     url: 'http://localhost:3001/api/blogs',
     method: 'POST',
-    body: { title, author, url },
+    body: content,
     headers: {
-      'Authorization': `bearer ${JSON.parse(localStorage.getItem('loggedNoteappUser')).token}`
-    }
+      Authorization: `bearer ${JSON.parse(localStorage.getItem('loggedInUser')).token}`,
+    },
   })
+
   cy.visit('http://localhost:3000')
+})
+
+Cypress.Commands.add('addLike', (blogTitle) => {
+  cy.get('.blog').contains(blogTitle).parent().parent().contains('Add').click()
 })
